@@ -1,0 +1,727 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum user_role {
+  customer
+  admin
+  super_admin
+}
+
+enum report_job_status {
+  queued
+  processing
+  llm_generation_started
+  llm_retry_1
+  llm_retry_2
+  llm_retry_3
+  fallback_template_used
+  rendering_html
+  rendering_pdf
+  completed
+  failed
+  refund_started
+  credit_released
+  quota_restored
+}
+
+enum credit_status {
+  available
+  held
+  captured
+  released
+  expired
+  admin_adjusted
+}
+
+enum order_status {
+  pending_payment
+  paid
+  report_generating
+  completed
+  failed
+  refunded
+  partially_refunded
+  manual_review_required
+}
+
+enum payment_status {
+  payment_pending
+  webhook_retrying
+  payment_confirmed
+  payment_failed
+  manual_review_required
+  refunded
+  partially_refunded
+}
+
+enum subscription_status {
+  active
+  renewal_disabled
+  expired
+  payment_failed
+  admin_extended
+}
+
+enum data_release_status {
+  draft
+  uploaded
+  validated
+  change_report_generated
+  awaiting_confirmation
+  published
+  rollback_in_progress
+  rolled_back
+  failed
+}
+
+enum support_ticket_status {
+  open
+  waiting_admin
+  waiting_user
+  escalated
+  resolved
+  closed
+}
+
+enum inbox_message_type {
+  report_completed
+  report_failed
+  refund_processed
+  credit_returned
+  admin_reply
+  subscription_update
+  monthly_market_update
+  system_announcement
+}
+
+model User {
+  id              String     @id @default(uuid()) @db.Uuid
+  email           String     @unique
+  passwordHash    String     @map("password_hash")
+  role            user_role  @default(customer)
+  status          String     @default("active")
+  emailVerifiedAt DateTime?  @map("email_verified_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  deletedAt       DateTime?  @map("deleted_at")
+
+  profiles                    UserProfile[]
+  profileSnapshots            ProfileSnapshot[]
+  orders                      Order[]
+  payments                    Payment[]
+  subscriptions               Subscription[]
+  reportCredits               ReportCredit[]
+  reportJobs                  ReportJob[]
+  reports                     Report[]
+  adminProfile                AdminUser?
+  auditLogs                   AuditLog[]       @relation("AuditActor")
+  supportTickets              SupportTicket[]
+  supportMessages             SupportMessage[]
+  inboxMessages               InboxMessage[]
+  monthlyMarketUpdateSettings MonthlyMarketUpdateSetting[]
+  dataUploads                 DataUpload[]     @relation("DataUploadActor")
+
+  @@map("users")
+}
+
+model UserProfile {
+  id                         String    @id @default(uuid()) @db.Uuid
+  userId                     String    @map("user_id") @db.Uuid
+  budgetRange                String    @map("budget_range")
+  buyingPurpose              String    @map("buying_purpose")
+  propertyTypePreference     String    @map("property_type_preference")
+  riskPreference             String    @map("risk_preference")
+  growthPreference           String?   @map("growth_preference")
+  liquidityPreference        String?   @map("liquidity_preference")
+  commuteRequirementsJson    Json?     @map("commute_requirements_json") @db.JsonB
+  lifestylePrioritiesJson    Json?     @map("lifestyle_priorities_json") @db.JsonB
+  preferredGeographiesJson   Json?     @map("preferred_geographies_json") @db.JsonB
+  schoolFamilyNeedsJson      Json?     @map("school_family_needs_json") @db.JsonB
+  rentalYieldImportance      String?   @map("rental_yield_importance")
+  futureDevelopmentTolerance String?   @map("future_development_tolerance")
+  freeTextNotes              String?   @map("free_text_notes")
+  language2                  String?   @map("language_2")
+  language3                  String?   @map("language_3")
+  completenessScore          Int       @default(0) @map("completeness_score")
+  activeFlag                 Boolean   @default(true) @map("active_flag")
+  createdAt                  DateTime  @default(now()) @map("created_at")
+  updatedAt                  DateTime  @updatedAt @map("updated_at")
+  deletedAt                  DateTime? @map("deleted_at")
+
+  user      User              @relation(fields: [userId], references: [id])
+  snapshots ProfileSnapshot[]
+
+  @@index([userId, activeFlag])
+  @@map("user_profiles")
+}
+
+model ProfileSnapshot {
+  id                   String   @id @default(uuid()) @db.Uuid
+  userId               String   @map("user_id") @db.Uuid
+  sourceProfileId      String   @map("source_profile_id") @db.Uuid
+  snapshotJson         Json     @map("snapshot_json") @db.JsonB
+  completenessScore    Int      @map("completeness_score")
+  confidenceBand       String   @map("confidence_band")
+  questionnaireVersion String   @map("questionnaire_version")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  user          User          @relation(fields: [userId], references: [id])
+  sourceProfile UserProfile   @relation(fields: [sourceProfileId], references: [id])
+  reportJobs    ReportJob[]
+
+  @@index([userId, createdAt])
+  @@map("profile_snapshots")
+}
+
+model ProfileQuestionVersion {
+  id                 String   @id @default(uuid()) @db.Uuid
+  version            String   @unique
+  schemaJson         Json     @map("schema_json") @db.JsonB
+  scoringWeightsJson Json     @map("scoring_weights_json") @db.JsonB
+  activeFlag         Boolean  @default(false) @map("active_flag")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("profile_question_versions")
+}
+
+model Suburb {
+  id         String   @id @default(uuid()) @db.Uuid
+  salCode    String   @map("sal_code")
+  salName    String   @map("sal_name")
+  sa2Code    String?  @map("sa2_code")
+  lgaCode    String?  @map("lga_code")
+  gccsaCode  String?  @map("gccsa_code")
+  city       String
+  state      String
+  activeFlag Boolean  @default(true) @map("active_flag")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  postcodeRelationships SuburbPostcodeRelationship[]
+  scoringRecords        SuburbScoringRecord[]
+  orders                Order[]
+  reportJobs            ReportJob[]
+  reports               Report[]
+
+  @@unique([salCode, city, state])
+  @@index([salName])
+  @@map("suburbs")
+}
+
+model Postcode {
+  id         String   @id @default(uuid()) @db.Uuid
+  postcode   String
+  city       String
+  state      String
+  activeFlag Boolean  @default(true) @map("active_flag")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  suburbRelationships SuburbPostcodeRelationship[]
+  orders              Order[]
+  reportJobs          ReportJob[]
+
+  @@index([postcode, city, state])
+  @@map("postcodes")
+}
+
+model SuburbPostcodeRelationship {
+  id                     String    @id @default(uuid()) @db.Uuid
+  suburbId               String    @map("suburb_id") @db.Uuid
+  postcodeId             String    @map("postcode_id") @db.Uuid
+  relationshipConfidence String    @map("relationship_confidence")
+  selectableFlag         Boolean   @default(false) @map("selectable_flag")
+  effectiveFrom          DateTime? @map("effective_from")
+  effectiveTo            DateTime? @map("effective_to")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  suburb   Suburb   @relation(fields: [suburbId], references: [id])
+  postcode Postcode @relation(fields: [postcodeId], references: [id])
+
+  @@unique([suburbId, postcodeId])
+  @@index([selectableFlag])
+  @@map("suburb_postcode_relationships")
+}
+
+model MapLayer {
+  id             String   @id @default(uuid()) @db.Uuid
+  layerKey       String   @unique @map("layer_key")
+  layerType      String   @map("layer_type")
+  accessTier     String   @map("access_tier")
+  releaseVersion String?  @map("release_version")
+  styleJson      Json?    @map("style_json") @db.JsonB
+  activeFlag     Boolean  @default(true) @map("active_flag")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([accessTier, activeFlag])
+  @@map("map_layers")
+}
+
+model HigherGeography {
+  id             String   @id @default(uuid()) @db.Uuid
+  geographyType  String   @map("geography_type")
+  geographyCode  String   @map("geography_code")
+  name           String
+  city           String
+  state          String
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([geographyType, geographyCode, city, state])
+  @@map("higher_geographies")
+}
+
+model DataRelease {
+  id                String              @id @default(uuid()) @db.Uuid
+  releaseKey        String              @unique @map("release_key")
+  city              String
+  status            data_release_status @default(draft)
+  sourceSummaryJson Json?               @map("source_summary_json") @db.JsonB
+  publishedAt       DateTime?           @map("published_at")
+  rolledBackAt      DateTime?           @map("rolled_back_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  scoringReleases ScoringRelease[]
+  reportJobs      ReportJob[]
+
+  @@index([city, status])
+  @@map("data_releases")
+}
+
+model ScoringRelease {
+  id                   String              @id @default(uuid()) @db.Uuid
+  releaseKey           String              @unique @map("release_key")
+  dataReleaseId        String              @map("data_release_id") @db.Uuid
+  modelRegistryVersion String              @map("model_registry_version")
+  scoringTableVersion  String              @map("scoring_table_version")
+  status               data_release_status @default(draft)
+  publishedAt          DateTime?           @map("published_at")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  dataRelease   DataRelease          @relation(fields: [dataReleaseId], references: [id])
+  scoringRows   SuburbScoringRecord[]
+  reportJobs    ReportJob[]
+
+  @@index([status, publishedAt])
+  @@map("scoring_releases")
+}
+
+model SuburbScoringRecord {
+  id                          String   @id @default(uuid()) @db.Uuid
+  scoringReleaseId            String   @map("scoring_release_id") @db.Uuid
+  suburbId                    String   @map("suburb_id") @db.Uuid
+  salCode                     String   @map("sal_code")
+  latestYear                  Int      @map("latest_year")
+  scoreJson                   Json     @map("score_json") @db.JsonB
+  predictionJson              Json     @map("prediction_json") @db.JsonB
+  confidenceJson              Json     @map("confidence_json") @db.JsonB
+  reportGenerationAllowedFlag Boolean  @default(true) @map("report_generation_allowed_flag")
+  reportBlockReason           String?  @map("report_block_reason")
+  createdAt                   DateTime @default(now()) @map("created_at")
+  updatedAt                   DateTime @updatedAt @map("updated_at")
+
+  scoringRelease ScoringRelease @relation(fields: [scoringReleaseId], references: [id])
+  suburb         Suburb         @relation(fields: [suburbId], references: [id])
+
+  @@unique([scoringReleaseId, suburbId])
+  @@index([salCode])
+  @@map("suburb_scoring_records")
+}
+
+model DataUpload {
+  id                   String              @id @default(uuid()) @db.Uuid
+  uploadedBy           String              @map("uploaded_by") @db.Uuid
+  fileName             String              @map("file_name")
+  fileType             String              @map("file_type")
+  status               data_release_status @default(uploaded)
+  validationReportJson Json?               @map("validation_report_json") @db.JsonB
+  changeReportJson     Json?               @map("change_report_json") @db.JsonB
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  actor User @relation("DataUploadActor", fields: [uploadedBy], references: [id])
+
+  @@index([uploadedBy, status])
+  @@map("data_uploads")
+}
+
+model ModelRegistryVersion {
+  id          String   @id @default(uuid()) @db.Uuid
+  registryKey String   @unique @map("registry_key")
+  sourcePath  String   @map("source_path")
+  modelCount  Int      @map("model_count")
+  activeFlag  Boolean  @default(false) @map("active_flag")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("model_registry_versions")
+}
+
+model Product {
+  id               String   @id @default(uuid()) @db.Uuid
+  productType      String   @map("product_type")
+  name             String
+  priceCents       Int      @map("price_cents")
+  currency         String   @default("AUD")
+  gstInclusiveFlag Boolean  @default(true) @map("gst_inclusive_flag")
+  activeFlag       Boolean  @default(true) @map("active_flag")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  orders        Order[]
+  subscriptions Subscription[]
+
+  @@index([productType, activeFlag])
+  @@map("products")
+}
+
+model Order {
+  id                 String       @id @default(uuid()) @db.Uuid
+  userId             String       @map("user_id") @db.Uuid
+  productId          String       @map("product_id") @db.Uuid
+  status             order_status @default(pending_payment)
+  selectedSuburbId   String?      @map("selected_suburb_id") @db.Uuid
+  selectedPostcodeId String?      @map("selected_postcode_id") @db.Uuid
+  amountCents        Int          @map("amount_cents")
+  gstCents           Int          @default(0) @map("gst_cents")
+  currency           String       @default("AUD")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  deletedAt          DateTime?    @map("deleted_at")
+
+  user             User        @relation(fields: [userId], references: [id])
+  product          Product     @relation(fields: [productId], references: [id])
+  selectedSuburb   Suburb?     @relation(fields: [selectedSuburbId], references: [id])
+  selectedPostcode Postcode?   @relation(fields: [selectedPostcodeId], references: [id])
+  payments         Payment[]
+  invoices         Invoice[]
+  reportJobs       ReportJob[]
+  reportCredits    ReportCredit[]
+
+  @@index([userId, status])
+  @@map("orders")
+}
+
+model Payment {
+  id                String         @id @default(uuid()) @db.Uuid
+  orderId           String         @map("order_id") @db.Uuid
+  userId            String         @map("user_id") @db.Uuid
+  provider          String
+  providerPaymentId String?        @map("provider_payment_id")
+  status            payment_status @default(payment_pending)
+  rawEventJson      Json?          @map("raw_event_json") @db.JsonB
+  amountCents       Int            @map("amount_cents")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@index([orderId, status])
+  @@index([provider, providerPaymentId])
+  @@map("payments")
+}
+
+model Invoice {
+  id            String    @id @default(uuid()) @db.Uuid
+  orderId       String    @map("order_id") @db.Uuid
+  invoiceNumber String    @unique @map("invoice_number")
+  businessName  String    @map("business_name")
+  abn           String?
+  amountCents   Int       @map("amount_cents")
+  gstCents      Int       @map("gst_cents")
+  issuedAt      DateTime? @map("issued_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("invoices")
+}
+
+model Subscription {
+  id                 String              @id @default(uuid()) @db.Uuid
+  userId             String              @map("user_id") @db.Uuid
+  productId          String              @map("product_id") @db.Uuid
+  status             subscription_status @default(active)
+  billingPeriodStart DateTime            @map("billing_period_start")
+  billingPeriodEnd   DateTime            @map("billing_period_end")
+  reportsUsed        Int                 @default(0) @map("reports_used")
+  reportsLimit       Int                 @default(30) @map("reports_limit")
+  nextResetAt        DateTime            @map("next_reset_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  deletedAt          DateTime?           @map("deleted_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([userId, status])
+  @@map("subscriptions")
+}
+
+model ReportCredit {
+  id                    String        @id @default(uuid()) @db.Uuid
+  userId                String        @map("user_id") @db.Uuid
+  sourceOrderId         String?       @map("source_order_id") @db.Uuid
+  status                credit_status @default(available)
+  heldByReportJobId     String?       @map("held_by_report_job_id") @db.Uuid
+  capturedByReportId    String?       @map("captured_by_report_id") @db.Uuid
+  expiresAt             DateTime?     @map("expires_at")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  user              User       @relation(fields: [userId], references: [id])
+  sourceOrder       Order?     @relation(fields: [sourceOrderId], references: [id])
+  heldByReportJob   ReportJob? @relation(fields: [heldByReportJobId], references: [id])
+  capturedByReport  Report?    @relation(fields: [capturedByReportId], references: [id])
+
+  @@index([userId, status])
+  @@map("report_credits")
+}
+
+model Coupon {
+  id           String    @id @default(uuid()) @db.Uuid
+  code         String    @unique
+  discountType String    @map("discount_type")
+  value        Int
+  validFrom    DateTime? @map("valid_from")
+  validTo      DateTime? @map("valid_to")
+  usageLimit   Int?      @map("usage_limit")
+  activeFlag   Boolean   @default(true) @map("active_flag")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("coupons")
+}
+
+model ReportJob {
+  id                    String            @id @default(uuid()) @db.Uuid
+  userId                String            @map("user_id") @db.Uuid
+  orderId               String?           @map("order_id") @db.Uuid
+  suburbId              String            @map("suburb_id") @db.Uuid
+  postcodeId            String?           @map("postcode_id") @db.Uuid
+  status                report_job_status @default(queued)
+  entitlementType       String            @map("entitlement_type")
+  profileSnapshotId     String            @map("profile_snapshot_id") @db.Uuid
+  scoringReleaseId      String            @map("scoring_release_id") @db.Uuid
+  dataReleaseId         String            @map("data_release_id") @db.Uuid
+  reportTemplateVersion String            @map("report_template_version")
+  llmTemplateVersion    String            @map("llm_template_version")
+  attempts              Int               @default(0)
+  fallbackUsedFlag      Boolean           @default(false) @map("fallback_used_flag")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  user            User             @relation(fields: [userId], references: [id])
+  order           Order?           @relation(fields: [orderId], references: [id])
+  suburb          Suburb           @relation(fields: [suburbId], references: [id])
+  postcode        Postcode?        @relation(fields: [postcodeId], references: [id])
+  profileSnapshot ProfileSnapshot  @relation(fields: [profileSnapshotId], references: [id])
+  scoringRelease  ScoringRelease   @relation(fields: [scoringReleaseId], references: [id])
+  dataRelease     DataRelease      @relation(fields: [dataReleaseId], references: [id])
+  reports         Report[]
+  creditsHeld     ReportCredit[]
+  llmLogs         LlmGenerationLog[]
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("report_jobs")
+}
+
+model Report {
+  id                     String    @id @default(uuid()) @db.Uuid
+  reportJobId            String    @map("report_job_id") @db.Uuid
+  userId                 String    @map("user_id") @db.Uuid
+  suburbId               String    @map("suburb_id") @db.Uuid
+  status                 String    @default("completed")
+  title                  String
+  generatedAt            DateTime? @map("generated_at")
+  dataVersionRefsJson    Json      @map("data_version_refs_json") @db.JsonB
+  predictionSnapshotJson Json      @map("prediction_snapshot_json") @db.JsonB
+  profileSnapshotJson    Json      @map("profile_snapshot_json") @db.JsonB
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  reportJob       ReportJob      @relation(fields: [reportJobId], references: [id])
+  user            User           @relation(fields: [userId], references: [id])
+  suburb          Suburb         @relation(fields: [suburbId], references: [id])
+  files           ReportFile[]
+  capturedCredits ReportCredit[]
+  supportTickets  SupportTicket[]
+
+  @@index([userId, status])
+  @@map("reports")
+}
+
+model ReportFile {
+  id                   String   @id @default(uuid()) @db.Uuid
+  reportId             String   @map("report_id") @db.Uuid
+  fileType             String   @map("file_type")
+  storageUrl           String   @map("storage_url")
+  watermarkAppliedFlag Boolean  @default(false) @map("watermark_applied_flag")
+  checksum             String?
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  report Report @relation(fields: [reportId], references: [id])
+
+  @@index([reportId, fileType])
+  @@map("report_files")
+}
+
+model ReportTemplate {
+  id           String   @id @default(uuid()) @db.Uuid
+  templateKey  String   @map("template_key")
+  version      String
+  templateJson Json     @map("template_json") @db.JsonB
+  activeFlag   Boolean  @default(false) @map("active_flag")
+  createdBy    String?  @map("created_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([templateKey, version])
+  @@map("report_templates")
+}
+
+model LlmTemplate {
+  id                   String   @id @default(uuid()) @db.Uuid
+  templateKey           String   @map("template_key")
+  version               String
+  systemPrompt          String   @map("system_prompt")
+  contextSchemaJson     Json     @map("context_schema_json") @db.JsonB
+  validationSchemaJson  Json     @map("validation_schema_json") @db.JsonB
+  activeFlag            Boolean  @default(false) @map("active_flag")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@unique([templateKey, version])
+  @@map("llm_templates")
+}
+
+model LlmGenerationLog {
+  id               String   @id @default(uuid()) @db.Uuid
+  reportJobId      String   @map("report_job_id") @db.Uuid
+  provider         String
+  model            String
+  promptVersion    String   @map("prompt_version")
+  attemptNumber    Int      @map("attempt_number")
+  validationStatus String   @map("validation_status")
+  errorMessage     String?  @map("error_message")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  reportJob ReportJob @relation(fields: [reportJobId], references: [id])
+
+  @@index([reportJobId, attemptNumber])
+  @@map("llm_generation_logs")
+}
+
+model AdminUser {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @unique @map("user_id") @db.Uuid
+  adminRole user_role @map("admin_role")
+  activeFlag Boolean  @default(true) @map("active_flag")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("admin_users")
+}
+
+model AuditLog {
+  id           String    @id @default(uuid()) @db.Uuid
+  actorUserId  String?   @map("actor_user_id") @db.Uuid
+  actorRole    user_role @map("actor_role")
+  actionType   String    @map("action_type")
+  targetType   String    @map("target_type")
+  targetId     String?   @map("target_id") @db.Uuid
+  beforeJson   Json?     @map("before_json") @db.JsonB
+  afterJson    Json?     @map("after_json") @db.JsonB
+  reason       String?
+  ipAddress    String?   @map("ip_address")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  @@index([actorUserId, createdAt])
+  @@index([targetType, targetId])
+  @@map("audit_logs")
+}
+
+model SupportTicket {
+  id              String                @id @default(uuid()) @db.Uuid
+  userId          String                @map("user_id") @db.Uuid
+  relatedReportId String?               @map("related_report_id") @db.Uuid
+  category        String
+  status          support_ticket_status @default(open)
+  subject         String
+  message         String
+  attachmentUrl   String?               @map("attachment_url")
+  assignedAdminId String?               @map("assigned_admin_id") @db.Uuid
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  user          User             @relation(fields: [userId], references: [id])
+  relatedReport Report?          @relation(fields: [relatedReportId], references: [id])
+  messages      SupportMessage[]
+
+  @@index([status, category])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id            String   @id @default(uuid()) @db.Uuid
+  ticketId      String   @map("ticket_id") @db.Uuid
+  senderUserId  String   @map("sender_user_id") @db.Uuid
+  message       String
+  attachmentUrl String?  @map("attachment_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id])
+  sender User          @relation(fields: [senderUserId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
+}
+
+model InboxMessage {
+  id                String             @id @default(uuid()) @db.Uuid
+  userId            String             @map("user_id") @db.Uuid
+  messageType       inbox_message_type @map("message_type")
+  title             String
+  body              String
+  readAt            DateTime?          @map("read_at")
+  archivedAt        DateTime?          @map("archived_at")
+  relatedObjectType String?            @map("related_object_type")
+  relatedObjectId   String?            @map("related_object_id") @db.Uuid
+  createdAt         DateTime           @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+  @@map("inbox_messages")
+}
+
+model MonthlyMarketUpdateSetting {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @map("user_id") @db.Uuid
+  enabledFlag         Boolean  @default(false) @map("enabled_flag")
+  selectedSuburbsJson Json?    @map("selected_suburbs_json") @db.JsonB
+  deliveryChannel     String   @default("inbox") @map("delivery_channel")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("monthly_market_update_settings")
+}
