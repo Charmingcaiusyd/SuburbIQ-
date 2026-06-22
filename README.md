@@ -21,7 +21,7 @@ This repository is implementing the V1.3 engineering package in phases:
 9. Testing and acceptance criteria
 10. Polish and deployment
 
-The current implementation includes the architecture boundaries, Prisma schema, initial SQL migration, domain enums/state machines, auth/profile/entitlement, database-backed suburb/postcode search and map layer APIs, commerce/payment state-machine services, and Phase 6 report job generation with mock LLM/fallback processing. Real LLM, map rendering, BullMQ/Redis workers and storage integrations remain deliberately stubbed for later phases.
+The current implementation includes the architecture boundaries, Prisma schema, initial SQL migration, domain enums/state machines, auth/profile/entitlement, database-backed suburb/postcode search and map layer APIs, commerce/payment state-machine services, Phase 6 report job generation with mock LLM/fallback processing, and the Phase 7 admin portal with audited management actions. Real LLM, map rendering, BullMQ/Redis workers, storage integrations and full Phase 8 release validation remain deliberately stubbed for later phases.
 
 ## Documentation
 

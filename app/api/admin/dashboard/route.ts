@@ -1,11 +1,12 @@
 import type { NextRequest } from "next/server";
 import { apiOk } from "@/server/api/response";
 import { requireAdmin } from "@/server/auth/guards";
-import { listSupportTickets } from "@/server/services/admin-service";
+import { getAdminDashboard } from "@/server/services/admin-service";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);
+
   if (!auth.user) return auth.response;
 
-  return apiOk({ support_tickets: await listSupportTickets() });
+  return apiOk(await getAdminDashboard());
 }

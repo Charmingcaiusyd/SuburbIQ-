@@ -1,9 +1,11 @@
-import { createStubRoute } from "@/server/api/stub-route";
+import type { NextRequest } from "next/server";
+import { apiOk } from "@/server/api/response";
+import { requireSuperAdmin } from "@/server/auth/guards";
+import { listDataReleases } from "@/server/services/admin-service";
 
-export const GET = createStubRoute({
-  method: "GET",
-  path: "/admin/data-releases",
-  auth: "super_admin",
-  phase: "Phase 8",
-  purpose: "List data releases and active markers."
-});
+export async function GET(request: NextRequest) {
+  const auth = await requireSuperAdmin(request);
+  if (!auth.user) return auth.response;
+
+  return apiOk(await listDataReleases());
+}

@@ -1,9 +1,11 @@
-import { createStubRoute } from "@/server/api/stub-route";
+import type { NextRequest } from "next/server";
+import { apiOk } from "@/server/api/response";
+import { requireAdmin } from "@/server/auth/guards";
+import { listReportJobs } from "@/server/services/admin-service";
 
-export const GET = createStubRoute({
-  method: "GET",
-  path: "/admin/report-jobs",
-  auth: "admin",
-  phase: "Phase 7",
-  purpose: "Search and inspect report jobs."
-});
+export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (!auth.user) return auth.response;
+
+  return apiOk({ report_jobs: await listReportJobs() });
+}

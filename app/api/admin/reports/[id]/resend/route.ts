@@ -1,10 +1,26 @@
-import { createStubRoute } from "@/server/api/stub-route";
+import type { NextRequest } from "next/server";
+import { apiError, apiOk } from "@/server/api/response";
+import { requireAdmin } from "@/server/auth/guards";
+import { adminActor, reasonSchema, resendReportLink } from "@/server/services/admin-service";
+import { toCommerceErrorResponse } from "@/server/services/commerce-service";
 
-export const POST = createStubRoute({
-  method: "POST",
-  path: "/admin/reports/{id}/resend",
-  auth: "admin",
-  phase: "Phase 7",
-  purpose: "Resend report link to user.",
-  audit: true
-});
+export async function POST(request: NextRequest, context: { params: { id: string } }) {
+  const auth = await requireAdmin(request);
+  if (!auth.user) return auth.response;
+
+  const parsed = reasonSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return apiError("VALIDATION_ERROR", "Resend reason is required.", 422, parsed.error.flatten());
+  }
+
+  try {
+    return apiOk(await resendReportLink({
+      reportId: context.params.id,
+      actor: adminActor(auth.user),
+      reason: parsed.data.reason
+    }));
+  } catch (error) {
+    const response = toCommerceErrorResponse(error);
+    return apiError(response.code, response.message, response.status, response.details);
+  }
+}

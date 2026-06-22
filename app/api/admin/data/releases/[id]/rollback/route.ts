@@ -1,10 +1,19 @@
-import { createStubRoute } from "@/server/api/stub-route";
+import type { NextRequest } from "next/server";
+import { apiError, apiOk } from "@/server/api/response";
+import { requireSuperAdmin } from "@/server/auth/guards";
+import { adminActor, reasonSchema, rollbackDataRelease } from "@/server/services/admin-service";
+import { toCommerceErrorResponse } from "@/server/services/commerce-service";
 
-export const POST = createStubRoute({
-  method: "POST",
-  path: "/admin/data/releases/{id}/rollback",
-  auth: "super_admin",
-  phase: "Phase 8",
-  purpose: "Rollback data/scoring/map/template release without mutating old reports.",
-  audit: true
-});
+export async function POST(request: NextRequest, context: { params: { id: string } }) {
+  const auth = await requireSuperAdmin(request);
+  if (!auth.user) return auth.response;
+  const parsed = reasonSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return apiError("VALIDATION_ERROR", "Rollback reason is required.", 422, parsed.error.flatten());
+
+  try {
+    return apiOk(await rollbackDataRelease({ releaseId: context.params.id, actor: adminActor(auth.user), reason: parsed.data.reason }));
+  } catch (error) {
+    const response = toCommerceErrorResponse(error);
+    return apiError(response.code, response.message, response.status, response.details);
+  }
+}

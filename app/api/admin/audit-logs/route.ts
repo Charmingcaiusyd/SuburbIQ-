@@ -1,9 +1,11 @@
-import { createStubRoute } from "@/server/api/stub-route";
+import type { NextRequest } from "next/server";
+import { apiOk } from "@/server/api/response";
+import { requireSuperAdmin } from "@/server/auth/guards";
+import { listAuditLogs } from "@/server/services/admin-service";
 
-export const GET = createStubRoute({
-  method: "GET",
-  path: "/admin/audit-logs",
-  auth: "super_admin",
-  phase: "Phase 7",
-  purpose: "Search/export audit logs."
-});
+export async function GET(request: NextRequest) {
+  const auth = await requireSuperAdmin(request);
+  if (!auth.user) return auth.response;
+
+  return apiOk({ audit_logs: await listAuditLogs() });
+}

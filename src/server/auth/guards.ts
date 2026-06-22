@@ -17,3 +17,37 @@ export async function requireUser(request: NextRequest) {
     response: null
   };
 }
+
+export async function requireAdmin(request: NextRequest) {
+  const auth = await requireUser(request);
+
+  if (!auth.user) {
+    return auth;
+  }
+
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") {
+    return {
+      user: null,
+      response: apiError("FORBIDDEN", "Admin access is required.", 403)
+    };
+  }
+
+  return auth;
+}
+
+export async function requireSuperAdmin(request: NextRequest) {
+  const auth = await requireUser(request);
+
+  if (!auth.user) {
+    return auth;
+  }
+
+  if (auth.user.role !== "super_admin") {
+    return {
+      user: null,
+      response: apiError("FORBIDDEN", "Super Admin access is required.", 403)
+    };
+  }
+
+  return auth;
+}
