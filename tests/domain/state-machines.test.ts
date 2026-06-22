@@ -34,4 +34,12 @@ describe("state machines", () => {
     expect(canTransitionDataRelease("uploaded", "validated")).toBe(true);
     expect(canTransitionDataRelease("uploaded", "published")).toBe(false);
   });
+
+  it("models publish and rollback confirmation gates for data releases", () => {
+    expect(canTransitionDataRelease("change_report_generated", "awaiting_confirmation")).toBe(true);
+    expect(canTransitionDataRelease("awaiting_confirmation", "published")).toBe(true);
+    expect(canTransitionDataRelease("published", "rolled_back")).toBe(false);
+    expect(canTransitionDataRelease("published", "rollback_in_progress")).toBe(true);
+    expect(canTransitionDataRelease("rollback_in_progress", "rolled_back")).toBe(true);
+  });
 });

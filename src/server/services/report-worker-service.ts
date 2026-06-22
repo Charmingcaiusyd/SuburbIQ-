@@ -70,7 +70,7 @@ function reportSectionsFromContext(context: {
   }));
 }
 
-function validateGeneratedOutput(output: unknown) {
+export function validateGeneratedReportOutput(output: unknown) {
   if (!output || typeof output !== "object" || Array.isArray(output)) {
     return false;
   }
@@ -307,7 +307,7 @@ export async function processReportJob(
           }),
           context
         };
-    const valid = validateGeneratedOutput(generated);
+    const valid = validateGeneratedReportOutput(generated);
 
     await logLlmAttempt({
       reportJobId: job.id,
@@ -345,7 +345,7 @@ export async function processReportJob(
           context
         };
 
-    if (!validateGeneratedOutput(output)) {
+    if (!validateGeneratedReportOutput(output)) {
       await setJobStatus(job.id, "fallback_template_used", "failed");
       await compensateFailedJob(job);
 

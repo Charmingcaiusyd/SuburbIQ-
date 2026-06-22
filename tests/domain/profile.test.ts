@@ -24,4 +24,16 @@ describe("buyer profile scoring", () => {
   it("classifies score 70 as medium confidence", () => {
     expect(getConfidenceBand(70)).toBe("medium");
   });
+
+  it("classifies score 59 as insufficient for personalised matching", () => {
+    expect(calculateProfileCompleteness({
+      budgetRange: "1.2m-1.5m",
+      buyingPurpose: "owner_occupier",
+      propertyTypePreference: "apartment",
+      preferredGeography: ["Sydney"],
+      riskPreference: "balanced",
+      futureDevelopmentTolerance: "medium"
+    })).toBe(59);
+    expect(getConfidenceBand(59)).toBe("insufficient");
+  });
 });

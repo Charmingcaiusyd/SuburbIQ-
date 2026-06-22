@@ -21,7 +21,7 @@ This repository is implementing the V1.3 engineering package in phases:
 9. Testing and acceptance criteria
 10. Polish and deployment
 
-The current implementation includes the architecture boundaries, Prisma schema, initial SQL migration, domain enums/state machines, auth/profile/entitlement, database-backed suburb/postcode search and map layer APIs, commerce/payment state-machine services, Phase 6 report job generation with mock LLM/fallback processing, the Phase 7 admin portal with audited management actions, and Phase 8 local-first data upload validation, change reports, release publishing and rollback. Real LLM, map rendering, BullMQ/Redis workers, storage integrations and binary data parsers remain deliberately stubbed for later phases.
+The current implementation includes the architecture boundaries, Prisma schema, initial SQL migration, domain enums/state machines, auth/profile/entitlement, database-backed suburb/postcode search and map layer APIs, commerce/payment state-machine services, Phase 6 report job generation with mock LLM/fallback processing, the Phase 7 admin portal with audited management actions, Phase 8 local-first data upload validation, change reports, release publishing and rollback, and Phase 9 acceptance/test coverage. Real LLM, map rendering, BullMQ/Redis workers, storage integrations and binary data parsers remain deliberately stubbed for later phases.
 
 ## Documentation
 
@@ -48,6 +48,8 @@ npm run dev
 npm run typecheck
 npm run lint
 npm test
+npm run test:unit
+npm run test:acceptance
 ```
 
 The current execution environment did not expose `node`/`npm`, so dependency installation and runtime checks must be run after Node.js is available.

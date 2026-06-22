@@ -6,21 +6,23 @@ const phases = [
   "Commerce state machines",
   "Report queue and LLM fallback",
   "Admin portal",
-  "Data release and rollback"
+  "Data release and rollback",
+  "Testing and acceptance criteria",
+  "Polish and deployment"
 ];
 
 export default function HomePage() {
   return (
     <main className="page-shell">
       <section className="panel">
-        <span className="pill">Phase 8 implemented</span>
+        <span className="pill">Phase 9 implemented</span>
         <h1>SuburbIQ</h1>
         <p className="muted">
           Sydney Property Data & Buyer Decision Platform. The current
           implementation includes architecture, database, auth/profile,
           suburb search, map layer APIs, commerce state-machine services,
-          mock report generation with fallback, the first admin portal and
-          local-first data release validation/rollback.
+          mock report generation with fallback, the first admin portal,
+          local-first data release validation/rollback and acceptance tests.
         </p>
       </section>
       <section className="grid" style={{ marginTop: 16 }}>
