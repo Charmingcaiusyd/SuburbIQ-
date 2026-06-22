@@ -297,6 +297,57 @@ async function main() {
       }
     }
   });
+
+  await prisma.reportTemplate.upsert({
+    where: {
+      templateKey_version: {
+        templateKey: "paid_suburb_report",
+        version: "v1.3-default-report"
+      }
+    },
+    update: {
+      activeFlag: true
+    },
+    create: {
+      templateKey: "paid_suburb_report",
+      version: "v1.3-default-report",
+      activeFlag: true,
+      templateJson: {
+        required_sections: [
+          "Executive Summary",
+          "Area Snapshot",
+          "Risk Warnings",
+          "Methodology and Disclaimer"
+        ]
+      }
+    }
+  });
+
+  await prisma.llmTemplate.upsert({
+    where: {
+      templateKey_version: {
+        templateKey: "paid_suburb_report_llm",
+        version: "v1.3-default-llm"
+      }
+    },
+    update: {
+      activeFlag: true
+    },
+    create: {
+      templateKey: "paid_suburb_report_llm",
+      version: "v1.3-default-llm",
+      activeFlag: true,
+      systemPrompt: "Generate a Sydney property report using only provided context.",
+      contextSchemaJson: {
+        required: ["suburb_id", "profile_snapshot", "prediction_json"]
+      },
+      validationSchemaJson: {
+        required_sections: true,
+        no_invented_numbers: true,
+        no_guaranteed_returns: true
+      }
+    }
+  });
 }
 
 main()

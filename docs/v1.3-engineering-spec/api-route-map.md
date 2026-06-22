@@ -25,6 +25,7 @@ The route skeleton follows `03_API_Contract_Specification_V1_3`.
 - `POST /api/reports/free-preview`
 - `POST /api/reports/generate`
 - `GET /api/report-jobs/[id]`
+- `POST /api/report-jobs/[id]/process`
 - `GET /api/reports`
 - `GET /api/reports/[id]`
 - `GET /api/reports/[id]/download`

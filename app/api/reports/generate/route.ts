@@ -1,28 +1,25 @@
 import type { NextRequest } from "next/server";
-import { apiCreated } from "@/server/api/response";
-import { mockCreateReportJob, mockQueueAdapter } from "@/server/services/mock-services";
+import { apiCreated, apiError } from "@/server/api/response";
+import { requireUser } from "@/server/auth/guards";
+import { createPaidReportJob } from "@/server/services/report-service";
+import { toCommerceErrorResponse } from "@/server/services/commerce-service";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const result = await mockCreateReportJob({
-    userId: body.user_id ?? body.userId ?? "stub-user",
-    entitlementType: body.entitlement_type ?? body.entitlementType ?? "credit",
-    suburbId: body.suburb_id ?? body.suburbId,
-    postcodeId: body.postcode_id ?? body.postcodeId,
-    creditId: body.credit_id ?? body.creditId,
-    orderId: body.order_id ?? body.orderId,
-    acknowledgedLowConfidenceWarning:
-      body.acknowledged_low_confidence_warning ??
-      body.acknowledgedLowConfidenceWarning
-  });
+  const auth = await requireUser(request);
 
-  await mockQueueAdapter.enqueueReportJob(result.reportJobId);
+  if (!auth.user) {
+    return auth.response;
+  }
 
-  return apiCreated({
-    report_job_id: result.reportJobId,
-    status: result.status,
-    entitlement_hold_status: result.entitlementHoldStatus,
-    estimated_stage: "queued",
-    implementation: "stub"
-  });
+  try {
+    const result = await createPaidReportJob({
+      userId: auth.user.id,
+      body: await request.json().catch(() => null)
+    });
+
+    return apiCreated(result);
+  } catch (error) {
+    const response = toCommerceErrorResponse(error);
+    return apiError(response.code, response.message, response.status, response.details);
+  }
 }

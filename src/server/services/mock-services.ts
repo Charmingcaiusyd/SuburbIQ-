@@ -5,8 +5,6 @@ import type {
   MapProvider,
   PaymentProvider,
   QueueAdapter,
-  ReportGenerationRequest,
-  ReportGenerationResult,
   StorageAdapter
 } from "./interfaces";
 
@@ -79,20 +77,3 @@ export const mockMapProvider: MapProvider = {
     ];
   }
 };
-
-export async function mockCreateReportJob(
-  request: ReportGenerationRequest
-): Promise<ReportGenerationResult> {
-  const entitlementHoldStatus =
-    request.entitlementType === "credit"
-      ? "held"
-      : request.entitlementType === "subscription"
-        ? "quota_held"
-        : "order_held";
-
-  return {
-    reportJobId: stubUuid,
-    status: "queued",
-    entitlementHoldStatus
-  };
-}

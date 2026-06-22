@@ -1,8 +1,5 @@
 import type {
-  CreditStatus,
-  EntitlementType,
-  PaymentStatus,
-  ReportJobStatus
+  PaymentStatus
 } from "@/domain/enums";
 
 export type CheckoutRequest = {
@@ -18,22 +15,6 @@ export type CheckoutSession = {
   provider: "stripe" | "paypal" | "manual";
   status: PaymentStatus;
   checkoutUrl: string;
-};
-
-export type ReportGenerationRequest = {
-  userId: string;
-  entitlementType: EntitlementType;
-  suburbId: string;
-  postcodeId?: string;
-  creditId?: string;
-  orderId?: string;
-  acknowledgedLowConfidenceWarning?: boolean;
-};
-
-export type ReportGenerationResult = {
-  reportJobId: string;
-  status: ReportJobStatus;
-  entitlementHoldStatus: CreditStatus | "quota_held" | "order_held";
 };
 
 export interface PaymentProvider {
