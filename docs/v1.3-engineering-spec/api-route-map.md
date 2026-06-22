@@ -4,6 +4,7 @@ The route skeleton follows `03_API_Contract_Specification_V1_3`.
 
 ## Public and Auth
 
+- `GET /api/health`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `POST /api/auth/logout`

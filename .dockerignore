@@ -1,0 +1,14 @@
+.next
+node_modules
+coverage
+dist
+*.log
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+docs/_extracted
+Sydney_Property_Data_Platform_Version1_2_Final_Developer_Specification_Package
+Sydney_Property_Data_Platform_Version1_3_Engineering_Implementation_Specification_Package
+.git
+.github

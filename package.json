@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/domain tests/server",
     "test:acceptance": "vitest run tests/acceptance",
+    "ci": "prisma validate && prisma generate && npm run typecheck && npm run lint && npm test",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",

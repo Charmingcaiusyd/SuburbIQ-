@@ -8,6 +8,8 @@ dist/
 .env.*.local
 !.env.example
 *.log
+*.pem
+*.key
 prisma/dev.db
 docs/_extracted/
 Sydney_Property_Data_Platform_Version1_2_Final_Developer_Specification_Package/
