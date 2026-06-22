@@ -6,7 +6,7 @@ export default function AdminSettingsPage() {
     <>
       <AdminPageHeader
         title="Settings"
-        description="Super admin feature flags and report display controls. Phase 7 records the audited setting change."
+        description="Super admin feature flags and report display controls with audited setting changes."
       />
       <section className="admin-section">
         <h2>Prediction Display</h2>

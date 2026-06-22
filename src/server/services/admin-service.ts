@@ -4,6 +4,21 @@ import { calculateGstInclusiveCents } from "@/domain/commerce";
 import { prisma } from "@/server/db/prisma";
 import { writeAuditLog } from "@/server/services/audit-service";
 import { CommerceError } from "@/server/services/commerce-service";
+import {
+  createDataUpload as createDataUploadWorkflow,
+  dataUploadCreateSchema,
+  dataUploadValidateSchema,
+  getDataQualityDashboard,
+  publishDataRelease as publishDataReleaseWorkflow,
+  rollbackDataRelease as rollbackDataReleaseWorkflow,
+  validateDataUpload as validateDataUploadWorkflow
+} from "@/server/services/data-release-service";
+
+export {
+  dataUploadCreateSchema,
+  dataUploadValidateSchema,
+  getDataQualityDashboard
+};
 
 type AdminActor = {
   id: string;
@@ -435,79 +450,43 @@ export async function createCoupon(input: z.infer<typeof couponCreateSchema> & {
 
 export async function listDataReleases() {
   const [dataReleases, scoringReleases] = await Promise.all([
-    prisma.dataRelease.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.scoringRelease.findMany({ orderBy: { createdAt: "desc" }, take: 100 })
+    prisma.dataRelease.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      include: {
+        _count: { select: { scoringReleases: true, reportJobs: true } }
+      }
+    }),
+    prisma.scoringRelease.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      include: {
+        _count: { select: { scoringRows: true, reportJobs: true } }
+      }
+    })
   ]);
   return { data_releases: dataReleases, scoring_releases: scoringReleases };
 }
 
-export async function createDataUpload(input: {
+export async function createDataUpload(input: z.infer<typeof dataUploadCreateSchema> & {
   actor: AdminActor;
-  fileName: string;
-  fileType: string;
-  reason: string;
 }) {
-  const upload = await prisma.dataUpload.create({
-    data: {
-      uploadedBy: input.actor.id,
-      fileName: input.fileName,
-      fileType: input.fileType,
-      status: "uploaded",
-      validationReportJson: {
-        status: "pending",
-        note: "Phase 7 admin upload placeholder. Validation worker is Phase 8."
-      },
-      changeReportJson: {
-        status: "pending"
-      }
-    }
-  });
-
-  await writeAuditLog({
-    actorUserId: input.actor.id,
-    actorRole: input.actor.role,
-    actionType: "data_upload",
-    targetType: "data_upload",
-    targetId: upload.id,
-    after: upload,
-    reason: input.reason
-  });
-
-  return upload;
+  return createDataUploadWorkflow(input);
 }
 
 export async function publishDataRelease(input: { releaseId: string; actor: AdminActor; reason: string }) {
-  const release = await prisma.dataRelease.update({
-    where: { id: input.releaseId },
-    data: { status: "published", publishedAt: new Date() }
-  });
-  await writeAuditLog({
-    actorUserId: input.actor.id,
-    actorRole: input.actor.role,
-    actionType: "data_publish",
-    targetType: "data_release",
-    targetId: release.id,
-    after: release,
-    reason: input.reason
-  });
-  return release;
+  return publishDataReleaseWorkflow(input);
 }
 
 export async function rollbackDataRelease(input: { releaseId: string; actor: AdminActor; reason: string }) {
-  const release = await prisma.dataRelease.update({
-    where: { id: input.releaseId },
-    data: { status: "rolled_back", rolledBackAt: new Date() }
-  });
-  await writeAuditLog({
-    actorUserId: input.actor.id,
-    actorRole: input.actor.role,
-    actionType: "data_rollback",
-    targetType: "data_release",
-    targetId: release.id,
-    after: release,
-    reason: input.reason
-  });
-  return release;
+  return rollbackDataReleaseWorkflow(input);
+}
+
+export async function validateDataUpload(input: z.infer<typeof dataUploadValidateSchema> & {
+  uploadId: string;
+  actor: AdminActor;
+}) {
+  return validateDataUploadWorkflow(input);
 }
 
 export async function updateReportTemplate(input: {
@@ -536,6 +515,51 @@ export async function updateReportTemplate(input: {
     reason: input.body.reason
   });
   return updated;
+}
+
+export async function rollbackReportTemplate(input: {
+  templateId: string;
+  actor: AdminActor;
+  reason: string;
+}) {
+  const template = await prisma.reportTemplate.findUnique({ where: { id: input.templateId } });
+  if (!template) throw new CommerceError("VALIDATION_ERROR", "Template was not found.", 404);
+
+  const previous = await prisma.reportTemplate.findFirst({
+    where: {
+      templateKey: template.templateKey,
+      id: { not: template.id }
+    },
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }]
+  });
+  if (!previous) {
+    throw new CommerceError("VALIDATION_ERROR", "No previous template version is available.", 422);
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.reportTemplate.updateMany({
+      where: { templateKey: template.templateKey },
+      data: { activeFlag: false }
+    });
+
+    return tx.reportTemplate.update({
+      where: { id: previous.id },
+      data: { activeFlag: true }
+    });
+  });
+
+  await writeAuditLog({
+    actorUserId: input.actor.id,
+    actorRole: input.actor.role,
+    actionType: "template_rollback",
+    targetType: "report_template",
+    targetId: template.id,
+    before: template,
+    after: updated,
+    reason: input.reason
+  });
+
+  return { active_template: updated, rolled_back_from: template.id };
 }
 
 export async function updatePredictionDisplay(input: {
@@ -649,12 +673,34 @@ export async function listAdminDataUploads() {
     include: { actor: true }
   });
 
+  function readStatus(value: Prisma.JsonValue | null | undefined) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return null;
+    }
+
+    return (value as Record<string, unknown>).status ?? null;
+  }
+
+  function readCount(value: Prisma.JsonValue | null | undefined, key: string) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return null;
+    }
+
+    const count = (value as Record<string, unknown>)[key];
+    return typeof count === "number" ? count : null;
+  }
+
   return uploads.map((upload) => ({
     id: upload.id,
     uploaded_by: upload.actor.email,
     file_name: upload.fileName,
     file_type: upload.fileType,
     status: upload.status,
+    validation_status: readStatus(upload.validationReportJson),
+    change_status: readStatus(upload.changeReportJson),
+    changed_rows_count: readCount(upload.changeReportJson, "changed_rows_count"),
+    added_rows_count: readCount(upload.changeReportJson, "added_rows_count"),
+    removed_rows_count: readCount(upload.changeReportJson, "removed_rows_count"),
     created_at: upload.createdAt.toISOString()
   }));
 }

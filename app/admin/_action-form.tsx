@@ -44,7 +44,9 @@ export function AdminActionForm({
             if (field.type === "number") {
               payload[field.name] = Number(raw);
             } else if (field.type === "json") {
-              payload[field.name] = raw ? JSON.parse(raw) : {};
+              if (raw.trim()) {
+                payload[field.name] = JSON.parse(raw);
+              }
             } else {
               payload[field.name] = raw;
             }

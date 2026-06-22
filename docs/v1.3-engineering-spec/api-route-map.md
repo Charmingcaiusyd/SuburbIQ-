@@ -55,7 +55,10 @@ The route skeleton follows `03_API_Contract_Specification_V1_3`.
 - `POST /api/admin/support-tickets/[id]/reply`
 - `POST /api/admin/coupons`
 - `PUT /api/admin/report-templates/[id]`
+- `POST /api/admin/report-templates/[id]/rollback`
 - `POST /api/admin/data/uploads`
+- `POST /api/admin/data/uploads/[id]/validate`
+- `GET /api/admin/data/quality`
 - `GET /api/admin/data-releases`
 - `POST /api/admin/data/releases/[id]/publish`
 - `POST /api/admin/data/releases/[id]/rollback`

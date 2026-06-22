@@ -9,7 +9,7 @@ export default async function AdminTemplatesPage() {
     <>
       <AdminPageHeader
         title="Report Templates"
-        description="Inspect and update report template versions. LLM prompt editing remains separate from this Phase 7 surface."
+        description="Inspect, update and roll back report template versions. LLM prompt editing remains separate from this surface."
       />
       <AdminTable
         columns={[
@@ -17,7 +17,8 @@ export default async function AdminTemplatesPage() {
           { key: "key", label: "Template" },
           { key: "version", label: "Version" },
           { key: "active", label: "Active" },
-          { key: "action", label: "Update" }
+          { key: "action", label: "Update" },
+          { key: "rollback", label: "Rollback" }
         ]}
         rows={templates.map((template) => ({
           id: <ShortId value={template.id} />,
@@ -39,6 +40,13 @@ export default async function AdminTemplatesPage() {
                 { name: "reason", label: "Reason", placeholder: "Template correction" }
               ]}
               submitLabel="Save"
+            />
+          ),
+          rollback: (
+            <AdminActionForm
+              endpoint={`/api/admin/report-templates/${template.id}/rollback`}
+              fields={[{ name: "reason", label: "Reason", placeholder: "Rollback template version" }]}
+              submitLabel="Rollback"
             />
           )
         }))}
