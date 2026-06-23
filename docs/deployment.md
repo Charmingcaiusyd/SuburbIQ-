@@ -18,13 +18,21 @@ Integration variables can stay as `stub` during local development, but productio
 - `S3_ENDPOINT`
 - `S3_BUCKET`
 
-## Local Container Run
+## Local Podman Container Run
 
-```bash
-docker compose up --build -d
+Windows PowerShell:
+
+```powershell
+.\scripts\podman-start.ps1
 ```
 
-The Compose stack runs Prisma migrations and seed data through the `migrate` service before starting the app. See `docs/startup.md` for local startup, logs and reset commands.
+Linux:
+
+```bash
+bash scripts/podman-start.sh
+```
+
+The Podman startup scripts build OCI images from `Containerfile`, start PostgreSQL, Redis and MinIO in a Podman pod, run Prisma migrations and seed data, then start the Next.js app. See `docs/startup.md` for local startup, logs and reset commands.
 
 Health checks:
 
@@ -60,6 +68,7 @@ npm run test:acceptance
 
 ## Production Checklist
 
+- Use Podman on Linux/CentOS hosts, or run the Node runtime directly under systemd if the host is older CentOS 7.
 - Configure a managed PostgreSQL database and run `npm run db:deploy`.
 - Replace stub payment, LLM, Redis, Mapbox and S3-compatible values.
 - Set `NEXTAUTH_SECRET` to a high-entropy secret.

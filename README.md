@@ -29,12 +29,25 @@ The current implementation includes the architecture boundaries, Prisma schema, 
 - V1.3 engineering specification: `docs/v1.3-engineering-spec`
 - Extracted text for search/reference: `docs/_extracted`
 - Implementation plan: `docs/v1.3-engineering-spec/implementation-plan.md`
+- Startup guide: `docs/startup.md`
 - Deployment guide: `docs/deployment.md`
 - Phase 10 design audit: `docs/v1.3-engineering-spec/phase-10-polish-deployment-design-audit.md`
 
 ## Local Setup
 
-Install Node.js 20+ and PostgreSQL, then:
+Recommended container startup uses Podman:
+
+```powershell
+.\scripts\podman-start.ps1
+```
+
+On Linux/macOS shells:
+
+```bash
+bash scripts/podman-start.sh
+```
+
+For a native Node runtime, install Node.js 20+ and PostgreSQL, then:
 
 ```bash
 npm install

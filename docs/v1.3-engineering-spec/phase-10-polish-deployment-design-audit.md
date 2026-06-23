@@ -5,7 +5,7 @@
 - Added `/api/health` with lightweight health and optional `?deep=true` database readiness check.
 - Added deployment environment status helper for required production variables and integration stubs.
 - Enabled Next.js standalone output and disabled the `X-Powered-By` header.
-- Added Dockerfile, docker-compose stack, `.dockerignore`, GitHub Actions CI and deployment guide.
+- Added Podman-compatible `Containerfile`, Podman startup scripts, `.containerignore`, GitHub Actions CI and deployment guide.
 - Added `npm run ci` to run Prisma validation, client generation, typecheck, lint and tests.
 - Updated README/homepage status to Phase 10.
 
