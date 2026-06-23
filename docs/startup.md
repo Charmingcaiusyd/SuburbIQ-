@@ -128,6 +128,14 @@ If the update command hangs or asks for a reboot, complete the WSL repair manual
 docker compose up --build -d
 ```
 
+If Docker Desktop still returns to `stopped` and its backend log contains `hasNoVirtualization=true`, check the Windows hardware virtualization status:
+
+```bash
+systeminfo | findstr /i "Virtualization Firmware Hyper-V"
+```
+
+Docker Desktop cannot start the Linux engine while this value is `Virtualization Enabled In Firmware: No`. Enable Intel VT-x / Intel Virtualization Technology in BIOS or UEFI, save the change, reboot Windows, then start Docker Desktop again.
+
 ## Optional Node startup
 
 If Node.js 20+ is installed locally, copy the example environment and run:
