@@ -21,16 +21,10 @@ Integration variables can stay as `stub` during local development, but productio
 ## Local Container Run
 
 ```bash
-cp .env.example .env.local
-docker compose up --build
+docker compose up --build -d
 ```
 
-In a second terminal:
-
-```bash
-docker compose exec app npx prisma migrate deploy
-docker compose exec app npm run db:seed
-```
+The Compose stack runs Prisma migrations and seed data through the `migrate` service before starting the app. See `docs/startup.md` for local startup, logs and reset commands.
 
 Health checks:
 

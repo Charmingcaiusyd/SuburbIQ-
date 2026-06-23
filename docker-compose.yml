@@ -1,4 +1,31 @@
+x-app-env: &app-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://postgres:postgres@postgres:5432/suburbiq?schema=public
+  NEXTAUTH_SECRET: local-docker-secret-change-me
+  AUTH_SECRET: local-docker-secret-change-me
+  APP_BASE_URL: http://localhost:3000
+  STRIPE_SECRET_KEY: stub
+  PAYPAL_CLIENT_ID: stub
+  OPENAI_API_KEY: stub
+  MAPBOX_ACCESS_TOKEN: stub
+  REDIS_URL: redis://redis:6379
+  S3_ENDPOINT: http://minio:9000
+  S3_BUCKET: suburbiq-reports
+
 services:
+  migrate:
+    build:
+      context: .
+      target: builder
+    env_file:
+      - path: .env.local
+        required: false
+    environment: *app-env
+    command: sh -c "npm run db:deploy && npm run db:seed"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   app:
     build: .
     ports:
@@ -6,15 +33,10 @@ services:
     env_file:
       - path: .env.local
         required: false
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/suburbiq?schema=public
-      REDIS_URL: redis://redis:6379
-      S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: suburbiq-reports
+    environment: *app-env
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_started
       minio:
